@@ -1,0 +1,388 @@
+---
+title: "RLab 03 - Transforming with dplyr"
+author: "Flavjo Xhelollari"
+date: "02/16/2021"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+editor_options:
+  chunk_output_type: inline
+---
+
+# The Story so Far...
+
+As you already know, Dr. Hyun-Joo Kim has given a short survey to her STAT 190 classes for the past few years, and she then uses that data throughout the semester. The dataset found here has the information across six semesters that she has used the
+survey. Her grader or student worker types the information from the paper sheets in by hand. Over time, this leads to dirty data. There was an especially big change in recording between rows 194 and 195.
+
+```{r basic}
+#Before you start, save this RMarkdown file into your project folder.
+# Load the tidyverse package with dplyr commands.
+library(tidyverse)
+# Load the data file from the U: drive -  U:\_MT Student File Area\tberegovska\Stat220
+
+Clean_KimData <- read_csv("Clean-KimData.csv")
+
+#Then, you might want to save your raw dataset into your project folder
+write_csv(Clean_KimData, "Clean_KimData.csv")
+
+#after you've done this, you can load it next time from your Y: Drive
+#by putting a hashtag # at the front of line 23 and removing the # from line 31
+#Once you've saved it into your project folder last time, get it from here instead.
+#Clean_KimData <- read_csv("Clean_KimData.csv")
+# Finally, create a new copy of the data to keep the "clean" version clean.
+KimData <- Clean_KimData
+```
+
+As an aside, note that there are two commands: `read.csv` and `read_csv`. The first is built in, and the second comes from the tidyverse package.  Base R reads data in as a _data frame_, while the tidyverse version of `read_csv` reads data in as a _tibble_, which is a tidyverse version of a data frame with some small, but fancy upgrades. We used the tidyverse `read_csv` in this lab because it makes the output a bit prettier.
+
+# Data Transformations with `dplyr`
+
+In this section, we'll talk about the six `dplyr` commands you need to know: 
+
+1)	`filter`: pick individuals by their values.
+2)	`arrange`: reorder the rows.
+3)	`select`: pick variables by their names.
+4)	`mutate`: create new variables as functions of existing variables.
+5)	`group_by` and `summarize` : these two go together
+a)	`group_by`: mark data points as falling in different groups according to some variable.
+b)	`summarise` or `summarize`: collapse many values down to a single summary.
+
+#For more Information
+You will be happy that you know how to use dplyr, and it has even more capabilities than we will discuss here. You can get a nice cheatsheet from https://www.rstudio.com/resources/cheatsheets/  and our textbook also has a lot about it in Chapter 5 -- https://r4ds.had.co.nz/transform.html 
+
+#Brief Aside: Pipes
+A pipe is a way to connect multiple lines of code. It basically means, “take the result of this line down to the next line.” ggplot uses + as a pipe. That’s easy to remember (because + means "add something to your graph" but is not good coding practice (because + more commonly means “add these up”) dplyr and other tidyverse packages use a unique pipe that has no other meaning.
+%>%
+No, really, that’s what it looks like. Yes, that’s weird.
+But, you have to admit that you aren’t going to use %>% for anything else.
+
+## Filter
+### Basic Syntax
+
+The `filter` command selects certain observations. So, if we just want those who identified themselves as women or as only children in the dataset:
+
+```{r filter1}
+filter(KimData, Gender == "F")  # you need the quotes for characters or factors.
+filter(KimData, Siblings == 0)  # you don’t need the “quotes” for numbers
+```
+
+The "pipe" syntax is a great way to combine more than one transformation, and it's really the preferred format for these commands. For clarity, we typically put each piped command on its own line.
+
+```{r filter2}
+KimData %>% 
+  filter(Gender == "F")  #you need the quotes for characters or factors.
+
+KimData %>% 
+  filter(Siblings == 0)  #you don’t need the “quotes” for numbers
+```
+
+When you use one of these `dplyr` commands, the result is not, by default, stored in memory. If you want to save the results, you need to explicitly assign the results of the transformation to a variable. For example:
+
+```{r filter3}
+StinkyBoys <- KimData %>% 
+  filter(Gender == "M")
+View(StinkyBoys)
+```
+Note: Dr.Thatcher would like it to be known that Dr.Alberts named this variable. Dr.Beregovska would never use this name for a variable. More seriously, using View( ) causes a popup window which is not included in your actual knitted document.  We almost always want our output in our knitted document. So, if you want something in your output, use head( ) or summary( ) instead.
+
+### More on "Relational Operators"
+How do you select individuals of interest? Maybe you want to select **individuals** because a variable exactly matches some value. That's what the double equals sign,  `==` means. But there are other comparisons you might want to do. What they all have in common is that they're expressions that end up giving you a `TRUE` or `FALSE` value. [Note: `TRUE` and `FALSE` are reserved values in R that stand for the results of these kinds of computations.]
+
+- Equal to: `==` (more properly "Logically Equal to")
+- Less than: `<`
+- Less than or equal to: `<=`
+- Greater than: `>`
+- Greater than or equal to: `>=`
+- Not equal to: `!=`  (That's an exclamation point!)
+
+As an example, you might want to pick only students who have been at Truman at least 4 semesters:
+
+```{r filter4}
+UpperClass <- KimData %>% 
+  filter(Semester >= 4)
+View(UpperClass)
+```
+
+You can also combine multiple comparisons using the "and" and "or" connectors.
+
+- Or: `A | B` True if _either_ of A or B is true.
+- And: `A & B` True if _both_ of A and B are true.
+
+The example below shows code that finds all male students who are also first-year students.
+
+```{r filter5}
+FreshMales <- KimData %>% 
+  filter(Semester < 2 & Gender == "M")
+```
+
+**Question 0**
+
+Edit the command below so that you're specifying either male _or_ first-year. Are more or fewer individuals selected? Give a brief explanation of why that's the case.
+
+```{r filter6}
+FreshOrMales <-KimData %>% 
+  filter(Semester < 2 | Gender == "M")
+```
+**Q0 explanation**
+Clearly, FreshOrMales has more obs. than FreshMales, since 'and' is more restrictive. 
+
+Finally, there are special logical commands that detect specific characteristics of your data. One you should know about is `is.na`. This command checks to see if the value of a variable is NA (i.e., a missing value).
+
+The code below returns all individuals who did not give their number of siblings.
+
+```{r filter7}
+NASibs <- KimData %>% 
+  filter(is.na(Siblings))
+```
+
+## Arrange
+
+The `arrange` command sorts your data into a certain order. So, if we want the data in order those with the fewest number of semesters to the greatest number of semesters, we could run
+
+```{r arrange1}
+KimData %>% 
+  arrange(Semester)
+```
+
+On the other hand, if we wanted to order by _decreasing_ number of semesters, the `desc()` command could be put around `Semester`.
+
+```{r arrange2}
+KimData %>% 
+  arrange(desc(Semester))
+```
+
+## Select
+
+The `select` command selects only certain variables. This is especially helpful for giant datasets, so you can make something smaller to work with.  Let's make a new data set with only the variables that describe something "physical" about each student.
+
+Note that `Shoe Size` needs funny back quotes (like the triple-backquotes for chunks) around it because it has a space in the name. The quotes will appear when you TAB-complete the name as long as you've already run a command that loads the data set in.
+
+```{r select1}
+KimDataPhysical <- KimData %>%
+  select(Semester, Gender, `Shoe Size`, Height, Weight, Handed)
+head(KimDataPhysical)
+```
+
+If you want to have "all but" a certain number of variables, give a list with minus signs in front. If we decided we didn't want the `Handed` variable, for example, we could get rid of it:
+
+```{r select2}
+KimDataPhysical <- KimDataPhysical %>% select(-Handed)
+head(KimDataPhysical)
+```
+We could also select particular columns by their column number. This can be problematic or annoying, but may also be easier for datasets that do not have variable names included. Remember that the c() command makes a vector of numbers.
+So, this will select all of the numerical variables, but I did it the hard way, by going through and counting by hand which variables those are.
+
+```{r select3}
+KimNumData <- select(KimData, c(1,3,5:7, 12, 13:22)) 	
+View(KimNumData)
+```
+
+Command *rename* is a variation of select that simply changes the name of a variable.
+
+```{r rename}
+KimDataPhys2 <- rename(KimDataPhysical, Shoe.Size = `Shoe Size`)
+KimDataPhys3 <- select(KimDataPhysical, Shoe.Size = `Shoe Size`, everything())
+```
+You can see how the name changes in the environment window on the right.
+It is possible, but annoying, to rename variables directly with the select command. You can see in KimDataPhys3 that it weirdly moved Shoe.Size to the first column. The everything( ) command, as you might guess, literally keeps everything.
+
+Renaming variables can be especially nice when the original dataset has really long or confusing names, but it makes it harder to connect back to the original later.
+
+## Mutate
+
+The `mutate` command creates a new variable by applying a function to an existing
+variable or variables. This is especially helpful for data cleaning, or
+changing units or data types. 
+
+Suppose we wanted to know the number of _years_ that a student had been at
+Truman, rather than the number of semesters. Using `mutate`, we could create
+the `Year` variable by dividing Semester by 2, then rounding up with the
+`round` command.
+
+```{r mutate1}
+KimDataPhysical <- KimDataPhysical %>% 
+  mutate(Year = round(Semester/2))
+head(KimDataPhysical)
+```
+
+The `mutate` command can also be helpful when you want to create a "logical"
+variable that's TRUE when a certain condition is true and FALSE otherwise. For
+example, maybe we want to label all seniors who have had at least 6 prior
+semesters:
+
+```{r mutate2}
+KimDataPhysical <- KimDataPhysical %>% 
+  mutate(Senior = Semester >= 6)
+head(KimDataPhysical)
+```
+mutate can get tricky pretty quickly. 
+maybe we want to convert Gender into a factor, and turn the missing one into an NA.
+```{r mutate3}
+KimDataP4<- mutate(KimDataPhysical, Gender=as.factor(sub("other", NA, Gender)))
+```
+
+**Question 1**
+
+A person's "Body Mass Index" is calculated by taking mass divided by height squared. If you're measuring in metric (kg and m), you're done. If you're measuring in pounds and inches (as we're doing here), you then have to multiply by 703. In other words, BMI = 703*(Weight/Height^2). See the knit version of the lab for the nicely-typeset version.
+
+Use the `mutate` command twice to first create the `BMI` variable, and then create a variable `Obese` whose value is TRUE for anyone whose BMI is greater than or equal to 30. 
+**Answer below by adding to the code in the next code block.**
+
+```{r Q1}
+KimDataPhysical <- KimDataPhysical  %>%
+  mutate(KimDataPhysical, BMI = 703 * Weight/Height^2) %>%
+  mutate(KimDataPhysical, Obese = BMI >= 30)
+head(KimDataPhysical)
+
+```
+**Note:** Any results here should be viewed with caution. If we really wanted to explore the "freshman 15," we would need to do a "matched design" where we measure the same students over multiple years. And, don't even get us started on the limitations of using BMI by itself as an indicator of obesity.
+
+Our textbook has a list of helpful commands to include in mutate functions:
+[http://r4ds.had.co.nz/transform.html#mutate-funs] (http://r4ds.had.co.nz/transform.html#mutate-funs).
+
+## Grouping and Summarizing
+The `group_by` command doesn't do much by itself. It merely tells R that some of the individuals in your data set are grouped together according to the values of one or more of the categorical variables. Here's what grouping by Gender looks like. Can you see the slight difference in output between the regular data set and the grouped version?
+
+```{r summ1}
+KimDataPhysical
+KimDataPhysical <- KimDataPhysical %>% 
+  group_by(Gender)
+KimDataPhysical
+```
+
+But, combined with `summarize`, the two commands become a "magical machine"
+(according to Dr. Alberts). The `summarize` commands collapses groups down to one or more descriptive statistics that are calculated from each group. It has the following form:
+
+`summarize(summary.variable = function(old.variables))`
+
+where you replace each of the variables with actual variable names and `function` with an actual function. You can create multiple summary variables in the same command.
+
+```{r summ2}
+KimDataPhysical %>% group_by(Gender) %>%
+  summarize(MHeight = mean(Height, na.rm=TRUE), MWeight = mean(Weight, na.rm=TRUE))
+```
+
+Note that these commands need the `na.rm=TRUE` option. Otherwise, the missing values (NA) would keep R from calculating a mean. Here's what you get without
+`na.rm':
+
+```{r summ3}
+KimDataPhysical %>% group_by(Gender) %>%
+  summarize(MHeight = mean(Height), MWeight = mean(Weight))
+```
+
+**Question 2**
+
+We've heard of the "freshman 15," the weight that many college students gain after their first year of all-you-can-eat dorm food. Use `group_by` and `summarize` to group students by `Year` and calculate mean BMI for each group. Does BMI seem to be higher for students who have been here more years? **Answer Below.**
+
+```{r Q2}
+KimDataPhysical %>% 
+  group_by(Year) %>%
+  summarize(MBMI = mean(BMI, na.rm = TRUE))
+```
+**Q2 Explanation** `BMI` There is no direct relation between semester here at Truman and BMI. We can see that freshmen have a very high BMI, and also 5th year students. Other than that, the BMI has no obvious change. 
+
+### Calculating Counts and Percentages
+
+The `n()` command without any arguments inside the parentheses will count the
+_number_ of individuals within a group.
+
+Another specific use of grouping and summarizing is in calculating
+_percentages_, or _proportions_. Here's the code to calculate the percentage of each gender that are seniors:
+
+```{r summ4}
+KimDataPhysical %>% group_by(Gender) %>%
+  summarize(n = n(), Senior.Pct = mean(Senior==TRUE, na.rm=TRUE))
+```
+
+This code works because a comparison function like `Senior == TRUE' creates a list of TRUE and FALSE values for each individual. If you try to do calculations with these TRUE and FALSE values, R converts then to 1's and 0's, where 1 stands for being a senior. So, the mean of that list of 0's and 1's becomes (Number TRUE)/(Total Observations), which is a percent. Pretty nifty!
+
+**Question 3**
+Write the code to calculate the percentage of obese people in each year.
+Does this percentage show any clear trend? **Answer Below**
+
+```{r Q3}
+KimDataPhysical %>%
+  group_by(Year) %>%
+  summarize(n = n(), Obese.Pct = 100 * mean(Obese == TRUE, na.rm = TRUE))
+```
+**Q3 Explanation** There is no linear relation between the results, but what is obvious, is that the number of obese students drops in the later years after coming here. 
+
+### Multiple Groups 
+
+You can create multiple groups and summary statistics. For example, you could
+break the sample down by both `Gender` and `Year` just by listing both of
+these variables in the `group_by` command.
+
+**Question 4**
+
+Complete the code below to break `KimDataPhysical` down by both `Gender` and `Year`, then calculate the mean `BMI` and the number of individuals in each group. The first line should save your results to the variable `KimBMI`, so don't change that part (although you'll add on to it). The last line of the code chunk displays the results, so don't change that either. Do you see any trends within genders? 
+Based on the number of data points in each group, in which groups are the statistics most suspect?
+
+```{r Q4}
+KimBMI <- KimDataPhysical %>%
+  group_by(Gender, Year) %>% 
+  summarize(averageBMI = mean(BMI, na.rm = TRUE), n = n())
+  
+KimBMI
+```
+**Q4 Explanation** Females have a smaller BMI than males. Males seem to keep having the same BMI throughout the years, while females have a  smaller BMI after finishing their first semester here. Groups where statistics are most suspect are the last three years. 
+
+##Return of pipes
+``` {r PipeMasterSupreme}
+tall_Kim <- KimData %>%				#This line just declares the dataset
+  group_by(Gender,Semester) %>%		#what shall we group by?
+  summarize(count = n(), 				#this counts up how many in each thing
+            aveht=mean(Height, na.rm=TRUE)) %>% 	#this finds the average height
+  filter(count > 2) %>% 				#this gets rid of low-n categories
+  arrange(aveht) 					#this sorts them from shortest to tallest
+tall_Kim						#See what you made?
+```
+This script groups individuals by Gender and Semester, counts the number in each cell, then computes the average height. It eliminates low-n cells, then sorts it smallest to largest. That could be handy, right?
+
+Also notice that this script is long and wordy, but easy to understand.
+When you mix dplyr and ggplot, you have to be careful to get the pipes correct.
+That can be annoying, but you should keep your graphs away from your data management anyway.
+
+How about this? A chart of the average height of gender, by semester (excluding small groups). By keeping your **dplyr** transformation command far away from your **ggplot** visualization command, it's super clear and easy.
+
+``` {r ggplotORama}
+ggplot(data=tall_Kim, mapping = aes(x=Semester, y=aveht, color=Gender)) +
+  geom_point()
+```
+# Data Cleaning
+
+Commands in the `dplyr` package are often useful for data cleaning. We'll talk more about that later, but let's do one example.
+
+**Question 5**
+
+Complete the ggplot command below to create a histogram of the `Shoe Size` variable.  Remember the single back quotes around `Shoe Size` because it's a variable with a space in it. After making the histogram, do you see any data point that stands out? ** Answer Below **
+
+```{r Q5}
+ggplot(KimDataPhysical) + 
+  geom_histogram(mapping = aes(x = `Shoe Size`),
+                 fill = 'tan',
+                 color = 'black',
+                 binwidth = 1.5)
+```
+**Q5 Explanation** We see that we have an outlier, pointing to a shoe size of over 100, which makes no sense. 
+
+When you find an outlier, you shouldn't just throw it out. However, if you investigate, can't find a good reason for it, can't find the correct value for it, and it's clearly some sort of mistake, then likely removing the entire individual is a reasonable thing to do. Let's see the effect of removing the individual with the "giant" feet.
+
+**Question 6**
+
+Write two R commands using `dplyr`. One should calculate the average size of men and women's feet using all data points. The second should calculate the average size of men's and women's feet after removing the person with the giant feet. (Think about how you'll remove that person using a `dplyr` command.) How much of a difference in average shoe size did removing the outlier make? ** Answer Below **
+
+```{r Q6}
+KimDataPhysical %>%
+  group_by(Gender) %>%
+  summarize(averageSize = mean(`Shoe Size`, na.rm = TRUE))
+  #End of the first command
+KimDataPhysical %>%
+  group_by(Gender) %>%
+  filter(`Shoe Size` < 20) %>%
+  summarize(averageSizeNoOutlier = mean(`Shoe Size`, na.rm = TRUE))
+
+
+```
+**Q6 Explanation** Clearly, when we removed the outlier of size +100, the averageSize of males droped considerably. 
