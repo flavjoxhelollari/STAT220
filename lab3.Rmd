@@ -64,7 +64,7 @@ The `filter` command selects certain observations. So, if we just want those who
 
 ```{r filter1}
 filter(KimData, Gender == "F")  # you need the quotes for characters or factors.
-filter(KimData, Siblings == 0)  # you don’t need the “quotes” for numbers
+filter(KimData, Siblings == 0)  # you don’t need the “quotes” for numbers 
 ```
 
 The "pipe" syntax is a great way to combine more than one transformation, and it's really the preferred format for these commands. For clarity, we typically put each piped command on its own line.
@@ -122,10 +122,9 @@ Edit the command below so that you're specifying either male _or_ first-year. Ar
 
 ```{r filter6}
 FreshOrMales <-KimData %>% 
-  filter(Semester < 2 | Gender == "M")
+  filter(Semester < 2 & Gender == "M")
 ```
 **Q0 explanation**
-Clearly, FreshOrMales has more obs. than FreshMales, since 'and' is more restrictive. 
 
 Finally, there are special logical commands that detect specific characteristics of your data. One you should know about is `is.na`. This command checks to see if the value of a variable is NA (i.e., a missing value).
 
@@ -230,11 +229,9 @@ Use the `mutate` command twice to first create the `BMI` variable, and then crea
 **Answer below by adding to the code in the next code block.**
 
 ```{r Q1}
-KimDataPhysical <- KimDataPhysical  %>%
-  mutate(KimDataPhysical, BMI = 703 * Weight/Height^2) %>%
-  mutate(KimDataPhysical, Obese = BMI >= 30)
+KimDataPhysical <- KimDataPhysical %>%
+  mutate (BMI = 703*(Weight/Height^2),Obese = BMI >= 30)
 head(KimDataPhysical)
-
 ```
 **Note:** Any results here should be viewed with caution. If we really wanted to explore the "freshman 15," we would need to do a "matched design" where we measure the same students over multiple years. And, don't even get us started on the limitations of using BMI by itself as an indicator of obesity.
 
@@ -276,12 +273,17 @@ KimDataPhysical %>% group_by(Gender) %>%
 We've heard of the "freshman 15," the weight that many college students gain after their first year of all-you-can-eat dorm food. Use `group_by` and `summarize` to group students by `Year` and calculate mean BMI for each group. Does BMI seem to be higher for students who have been here more years? **Answer Below.**
 
 ```{r Q2}
-KimDataPhysical %>% 
-  group_by(Year) %>%
-  summarize(MBMI = mean(BMI, na.rm = TRUE))
-```
-**Q2 Explanation** `BMI` There is no direct relation between semester here at Truman and BMI. We can see that freshmen have a very high BMI, and also 5th year students. Other than that, the BMI has no obvious change. 
+KimDataPhysical
+KimDataPhysical <- KimDataPhysical %>% group_by(Year) %>%
+  summarize(MBMI = mean(BMI, na.rm=TRUE))
+  
+KimDataPhysical
 
+```
+**Q2 Explanation**
+  Yes, the BMI tends to be higher than the average, for students who have been here for more time. 
+  
+  
 ### Calculating Counts and Percentages
 
 The `n()` command without any arguments inside the parentheses will count the
@@ -302,11 +304,10 @@ Write the code to calculate the percentage of obese people in each year.
 Does this percentage show any clear trend? **Answer Below**
 
 ```{r Q3}
-KimDataPhysical %>%
-  group_by(Year) %>%
-  summarize(n = n(), Obese.Pct = 100 * mean(Obese == TRUE, na.rm = TRUE))
+KimDataPhysical %>% group_by(Year) %>%
+  summarize(n=n(), Obese.Pct = mean(Obese = TRUE, na.rm = TRUE))
 ```
-**Q3 Explanation** There is no linear relation between the results, but what is obvious, is that the number of obese students drops in the later years after coming here. 
+**Q3 Explanation**
 
 ### Multiple Groups 
 
@@ -320,13 +321,15 @@ Complete the code below to break `KimDataPhysical` down by both `Gender` and `Ye
 Based on the number of data points in each group, in which groups are the statistics most suspect?
 
 ```{r Q4}
-KimBMI <- KimDataPhysical %>%
-  group_by(Gender, Year) %>% 
-  summarize(averageBMI = mean(BMI, na.rm = TRUE), n = n())
+KimBMI <- KimDataPhysical %>% group_by(Gender, Year) %>%
+  summarize(MBI = mean(BMI, na.rm = TRUE))
   
 KimBMI
 ```
-**Q4 Explanation** Females have a smaller BMI than males. Males seem to keep having the same BMI throughout the years, while females have a  smaller BMI after finishing their first semester here. Groups where statistics are most suspect are the last three years. 
+**Q4 Explanation**
+  Males tend to have a higher BMI, and also, freshmen females. As discussed in one of the previous exercises,
+the bigger the number of years here, the bigger the BMI tends to be. Somehow, the result we got in Q4 confirms this again. 
+
 
 ##Return of pipes
 ``` {r PipeMasterSupreme}
@@ -359,13 +362,11 @@ Commands in the `dplyr` package are often useful for data cleaning. We'll talk m
 Complete the ggplot command below to create a histogram of the `Shoe Size` variable.  Remember the single back quotes around `Shoe Size` because it's a variable with a space in it. After making the histogram, do you see any data point that stands out? ** Answer Below **
 
 ```{r Q5}
-ggplot(KimDataPhysical) + 
-  geom_histogram(mapping = aes(x = `Shoe Size`),
-                 fill = 'tan',
-                 color = 'black',
-                 binwidth = 1.5)
+ggplot(data = KimDataPhysical) +
+  geom_histogram(mapping = aes("Shoe Size", count('Shoe Size'))
 ```
-**Q5 Explanation** We see that we have an outlier, pointing to a shoe size of over 100, which makes no sense. 
+
+**Q5 Explanation**
 
 When you find an outlier, you shouldn't just throw it out. However, if you investigate, can't find a good reason for it, can't find the correct value for it, and it's clearly some sort of mistake, then likely removing the entire individual is a reasonable thing to do. Let's see the effect of removing the individual with the "giant" feet.
 
@@ -374,15 +375,7 @@ When you find an outlier, you shouldn't just throw it out. However, if you inves
 Write two R commands using `dplyr`. One should calculate the average size of men and women's feet using all data points. The second should calculate the average size of men's and women's feet after removing the person with the giant feet. (Think about how you'll remove that person using a `dplyr` command.) How much of a difference in average shoe size did removing the outlier make? ** Answer Below **
 
 ```{r Q6}
-KimDataPhysical %>%
-  group_by(Gender) %>%
-  summarize(averageSize = mean(`Shoe Size`, na.rm = TRUE))
-  #End of the first command
-KimDataPhysical %>%
-  group_by(Gender) %>%
-  filter(`Shoe Size` < 20) %>%
-  summarize(averageSizeNoOutlier = mean(`Shoe Size`, na.rm = TRUE))
-
-
+KimDataPhysical %>% group_by(Gender) %>%
+  summarize(MSize = mean('Shoe Size', na.rm = TRUE))
 ```
-**Q6 Explanation** Clearly, when we removed the outlier of size +100, the averageSize of males droped considerably. 
+**Q6 Explanation**
